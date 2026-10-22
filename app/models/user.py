@@ -1,4 +1,4 @@
-﻿"""Modelo de Usuário (User)."""
+"""Modelo de Usuário (User)."""
 
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -10,6 +10,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.business_membership import BusinessMembership
+    from app.models.user_session import UserSession
 
 
 class User(Base):
@@ -32,4 +33,7 @@ class User(Base):
 
     memberships: Mapped[list["BusinessMembership"]] = relationship(
         "BusinessMembership", back_populates="user", cascade="all, delete-orphan"
+    )
+    sessions: Mapped[list["UserSession"]] = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
     )

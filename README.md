@@ -1,19 +1,29 @@
 # review-redirect
 
-Plataforma de redirecionamento e rastreamento de avalia??es do Google via NFC/QR
+Plataforma de redirecionamento e rastreamento de avaliações do Google via NFC/QR
 (FastAPI + SQLAlchemy 2.x + Alembic + PostgreSQL).
 
-## Pr?-requisitos
+## Pré-requisitos
 - Python 3.12
-- Docker e Docker Compose v2.24+ (para `!reset` no override de produ??o)
+- Docker e Docker Compose v2.24+ (para `!reset` no override de produção)
 
-## Configura??o
+## Configuração
 ```bash
 cp .env.example .env   # Windows PowerShell: Copy-Item .env.example .env
 ```
-Edite `.env` (senhas reais nunca v?o para o reposit?rio).
+Edite `.env` (senhas reais nunca vão para o repositório).
 
-## Instala??o local (sem Docker)
+### Principais Variáveis de Ambiente
+- `DATABASE_URL`: String de conexão SQLAlchemy para PostgreSQL.
+- `TEST_DATABASE_URL`: String de conexão para o banco de teste (deve terminar em `_test`).
+- `SESSION_COOKIE_NAME`: Nome do cookie de sessão (padrão: `session_id`).
+- `SESSION_TTL_HOURS`: Duração da sessão em horas (padrão: `12`).
+- `COOKIE_SECURE`: Ativa flag `Secure` no cookie (padrão `true` em prod; `false` em dev local HTTP).
+- `ALLOWED_ORIGINS`: Lista de origens permitidas para verificação de CSRF (separadas por vírgula).
+- `LOGIN_RATE_LIMIT_MAX_ATTEMPTS`: Limite de falhas de login antes de bloqueio temporário 429 (padrão: `5`).
+- `LOGIN_RATE_LIMIT_WINDOW_SECONDS`: Janela de contagem de falhas de login em segundos (padrão: `900` / 15 min).
+
+## Instalação local (sem Docker)
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
@@ -26,28 +36,32 @@ uvicorn app.main:app --reload
 # Iniciar o banco de dados de desenvolvimento:
 docker compose up -d db
 
-# Iniciar aplica??o completa:
+# Iniciar aplicação completa:
 docker compose up --build
 curl http://localhost:8000/health
 ```
 
-## Rotas Principais
-- `GET /health`: Liveness check (retorna `{"status": "ok"}` sem tocar no banco de dados).
-- `GET /r/{code}`: Endpoint p?blico de redirecionamento (HTTP 307 Temporary Redirect).
-  - Resolve o link ativo por `code`.
-  - Valida o destino contra a allowlist estrita do Google Meu Neg?cio / Google Maps (anti-open-redirect).
-  - Registra um evento de auditoria (`access_events`) de forma resiliente e an?nima (sem dados pessoais, IP ou UA bruto).
-  - Retorna `Cache-Control: no-store` para impedir cacheamento indevido no cliente/navegador.
-  - Links desativados respondem HTTP 410 Gone; c?digos inv?lidos ou inexistentes respondem HTTP 404 Not Found.
-
-### Testando o Redirecionamento Manualmente
+## Linha de Comando (CLI)
+### Criação de Administrador
+O primeiro administrador deve ser criado via CLI interativa (a senha é lida via `getpass` com confirmação e nunca passada por argumento nem logada):
 ```bash
-# Teste via curl sem seguir o redirecionamento (exibe o cabe?alho Location e status 307):
-curl -i http://localhost:8000/r/SEU_CODIGO_AQUI
+python -m app.cli create-admin --email admin@empresa.com
 ```
 
-## Migra??es (Alembic)
-As migra??es n?o rodam automaticamente no startup do container. A execu??o deve ser expl?cita:
+## Rotas Principais
+- `GET /health`: Liveness check (retorna `{"status": "ok"}` sem tocar no banco de dados).
+- `GET /r/{code}`: Endpoint público de redirecionamento (HTTP 307 Temporary Redirect).
+  - Resolve o link ativo por `code`.
+  - Valida o destino contra a allowlist estrita do Google Meu Negócio / Google Maps (anti-open-redirect).
+  - Registra um evento de auditoria (`access_events`) de forma resiliente e anônima (sem dados pessoais, IP ou UA bruto).
+  - Retorna `Cache-Control: no-store` para impedir cacheamento indevido no cliente/navegador.
+  - Links desativados respondem HTTP 410 Gone; códigos inválidos ou inexistentes respondem HTTP 404 Not Found.
+- `POST /auth/login`: Autenticação via JSON (`{email, password}`). Emite cookie de sessão server-side `HttpOnly` com `SameSite=Lax`.
+- `POST /auth/logout`: Revoga a sessão no banco e remove o cookie (HTTP 204 No Content, idempotente).
+- `GET /auth/me`: Retorna os dados do usuário autenticado a partir do cookie da sessão (`{id, email, is_admin}`).
+
+## Migrações (Alembic)
+As migrações não rodam automaticamente no startup do container. A execução deve ser explícita:
 ```bash
 # Via Docker:
 docker compose run --rm app alembic upgrade head
@@ -60,27 +74,27 @@ alembic check
 
 ## Testes Automatizados
 ```bash
-# Testes r?pidos de rotas (n?o dependem do PostgreSQL):
+# Testes rápidos de rotas (não dependem do PostgreSQL):
 pytest tests/test_health.py
 
-# Testes unit?rios do validador anti-open-redirect:
+# Testes unitários do validador anti-open-redirect:
 pytest tests/test_url_validator.py -v
 
-# Su?te completa de integridade e rotas com banco real (requer PostgreSQL e TEST_DATABASE_URL):
-# Por seguran?a, o nome do banco de teste deve terminar obrigatoriamente em _test
+# Testes unitários de hashing de senhas e segurança:
+pytest tests/test_security.py -v
+
+# Testes de autenticação e sessão com banco real:
+pytest tests/test_auth.py -v
+
+# Suíte completa de integridade e rotas com banco real (requer PostgreSQL e TEST_DATABASE_URL):
+# Por segurança, o nome do banco de teste deve terminar obrigatoriamente em _test
 pytest -v
 ```
 
-## Produ??o
+## Produção
 ```bash
 docker compose -f compose.yaml -f compose.production.yaml config   # validar
 docker compose -f compose.yaml -f compose.production.yaml up -d --build
 ```
-O override remove `--reload`, volumes de c?digo e a porta do banco, usa `restart: unless-stopped`
+O override remove `--reload`, volumes de código e a porta do banco, usa `restart: unless-stopped`
 e exige `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB` no ambiente/secret manager.
-
-## Suposi??es e Decis?es T?cnicas
-- Nome do projeto `review-redirect`, porta 8000, banco `review_redirect`.
-- Driver `psycopg` 3 (`postgresql+psycopg://`).
-- Naming convention expl?cita para constraints do SQLAlchemy/Alembic.
-- Valida??o estrita de URLs de destino baseada na [documenta??o oficial do Google](https://support.google.com/business/answer/16816815?hl=pt-BR).

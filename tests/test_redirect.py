@@ -1,4 +1,4 @@
-"""Testes de integra??o para o fluxo p?blico GET /r/{code} contra PostgreSQL real."""
+"""Testes de integração para o fluxo público GET /r/{code} contra PostgreSQL real."""
 
 from datetime import datetime, timezone
 
@@ -16,7 +16,7 @@ from app.services.redirect_service import detect_probable_bot
 def test_business(db_session: Session) -> Business:
     """Fixture de estabelecimento para associar aos review_links."""
     b = Business(
-        name="Caf? Central",
+        name="Café Central",
         slug="cafe-central",
         google_review_url="https://g.page/r/cafe-central",
     )
@@ -44,7 +44,7 @@ def test_redirect_active_link_success(db_client, db_session, test_business):
     assert response.headers.get("Location") == destination
     assert response.headers.get("Cache-Control") == "no-store"
 
-    # Verifica persist?ncia do access_event
+    # Verifica persistência do access_event
     events = db_session.scalars(
         select(AccessEvent).where(AccessEvent.review_link_id == link.id)
     ).all()
@@ -80,7 +80,7 @@ def test_redirect_inactive_link_returns_410(db_client, db_session, test_business
 
 
 def test_redirect_nonexistent_code_returns_404(db_client, db_session):
-    """C?digo inexistente com formato v?lido retorna 404 e N?O grava nenhum evento."""
+    """Código inexistente com formato válido retorna 404 e NÃO grava nenhum evento."""
     response = db_client.get("/r/codigo_inexistente_999", follow_redirects=False)
 
     assert response.status_code == 404
@@ -102,7 +102,7 @@ def test_redirect_nonexistent_code_returns_404(db_client, db_session):
     ],
 )
 def test_redirect_malformed_code_returns_404_without_query(db_client, db_session, malformed_code):
-    """C?digo fora da especifica??o ? rejeitado com 404 imediatamente sem registrar evento."""
+    """Código fora da especificação é rejeitado com 404 imediatamente sem registrar evento."""
     response = db_client.get(f"/r/{malformed_code}", follow_redirects=False)
 
     assert response.status_code == 404
@@ -128,17 +128,17 @@ def test_redirect_destination_outside_allowlist_returns_502(db_client, db_sessio
     assert response.status_code == 502
     assert "Location" not in response.headers
     assert response.headers.get("Cache-Control") == "no-store"
-    # N?o vaza a URL de destino nem IDs internos no corpo de erro
+    # Não vaza a URL de destino nem IDs internos no corpo de erro
     assert evil_url not in response.text
     assert str(link.id) not in response.text
 
-    # CHECK constraint n?o aceitaria outro result; garante que NENHUM evento foi criado
+    # CHECK constraint não aceitaria outro result; garante que NENHUM evento foi criado
     events = db_session.scalars(select(AccessEvent)).all()
     assert len(events) == 0
 
 
 def test_bot_detection_heuristics(db_client, db_session, test_business):
-    """Valida a detec??o heur?stica de bots pelo cabe?alho User-Agent sem armazen?-lo."""
+    """Valida a detecção heurística de bots pelo cabeçalho User-Agent sem armazená-lo."""
     destination = "https://g.page/r/test-bot"
     link = ReviewLink(
         business_id=test_business.id,
@@ -162,7 +162,7 @@ def test_bot_detection_heuristics(db_client, db_session, test_business):
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"},
         follow_redirects=False,
     )
-    # 3. Requisi??o sem cabe?alho User-Agent -> is_probable_bot = None
+    # 3. Requisição sem cabeçalho User-Agent -> is_probable_bot = None
     # Removemos o User-Agent default do TestClient para simular cliente HTTP sem UA
     original_ua = db_client.headers.pop("user-agent", None)
     try:
@@ -182,7 +182,7 @@ def test_bot_detection_heuristics(db_client, db_session, test_business):
 
 
 def test_detect_probable_bot_unit():
-    """Testes unit?rios isolados da fun??o pura detect_probable_bot."""
+    """Testes unitários isolados da função pura detect_probable_bot."""
     assert detect_probable_bot(None) is None
     assert detect_probable_bot("") is None
     assert detect_probable_bot("   ") is None
@@ -204,7 +204,7 @@ def test_privacy_no_ip_or_user_agent_columns_in_access_events():
     expected_columns = {"id", "review_link_id", "occurred_at", "result", "is_probable_bot"}
     assert column_names == expected_columns, f"Colunas encontradas: {column_names}"
 
-    # Garante aus?ncia total de colunas de IP, UA, fingerprint, geolocaliza??o
+    # Garante ausência total de colunas de IP, UA, fingerprint, geolocalização
     prohibited_fields = {
         "ip",
         "ip_address",
@@ -246,7 +246,7 @@ def test_consecutive_accesses_generate_multiple_events(db_client, db_session, te
 
 
 def test_health_check_remains_functional_without_database(client):
-    """Garante que /health continua respondendo 200 OK sem depender da conex?o de banco."""
+    """Garante que /health continua respondendo 200 OK sem depender da conexão de banco."""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}

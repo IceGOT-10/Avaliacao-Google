@@ -1,57 +1,56 @@
-"""Servi?o de valida??o de URL de destino para preven??o de Open Redirect.
+"""Serviço de validação de URL de destino para prevenção de Open Redirect.
 
-Garante que URLs de redirecionamento perten?am estritamente aos dom?nios e caminhos
-oficiais autorizados do Google Meu Neg?cio / Google Maps / Google Reviews.
+Garante que URLs de redirecionamento pertençam estritamente aos domínios e caminhos
+oficiais autorizados do Google Meu Negócio / Google Maps / Google Reviews.
 
-Fonte oficial de refer?ncia:
+Fonte oficial de referência:
 https://support.google.com/business/answer/16816815?hl=pt-BR
-(Criar um link ou QR code para pedir avalia??es - Ajuda do Perfil da empresa no Google)
+(Criar um link ou QR code para pedir avaliações - Ajuda do Perfil da empresa no Google)
 """
 
 import ipaddress
 from urllib.parse import urlsplit
 
-# Comprimento m?ximo seguro para URLs
+# Comprimento máximo seguro para URLs
 MAX_URL_LENGTH = 2048
 
-# Allowlist de hostnames oficiais do Google autorizados para avalia??es
+# Allowlist de hostnames oficiais do Google autorizados para avaliações
+# Nota: goo.gl foi removido por não constar na documentação oficial atual de avaliações do Google.
 ALLOWED_GOOGLE_HOSTS: frozenset[str] = frozenset({
     "g.page",
     "search.google.com",
     "maps.app.goo.gl",
     "www.google.com",
     "google.com",
-    "goo.gl",
 })
 
-# Restri??es de prefixo de caminho obrigat?rio por hostname
+# Restrições de prefixo de caminho obrigatório por hostname
 PATH_PREFIX_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "search.google.com": ("/local/writereview",),
     "www.google.com": ("/maps",),
     "google.com": ("/maps",),
-    "goo.gl": ("/maps",),
 }
 
 
 def validate_destination_url(url: str | None) -> bool:
-    r"""Valida estritamente se uma URL de destino pertence aos dom?nios do Google autorizados.
+    r"""Valida estritamente se uma URL de destino pertence aos domínios do Google autorizados.
 
-    Fun??o pura, estritamente determin?stica e sem I/O de rede.
+    Função pura, estritamente determinística e sem I/O de rede.
 
-    Regras de valida??o:
+    Regras de validação:
     - Esquema obrigatoriamente HTTPS.
-    - Hostname existente, exato na allowlist oficial (sem subdom?nios arbitr?rios).
-    - Proibi??o de credenciais / userinfo (ex.: user@host).
-    - Proibi??o de portas n?o-padr?o (apenas 443 ou omitida).
-    - Proibi??o de caracteres de controle, espa?os em branco e backslashes (\).
-    - Proibi??o de endere?os IP literais (IPv4 e IPv6).
-    - Proibi??o de hom?grafos / IDN / punycode.
-    - Valida??o de prefixo de caminho para dom?nios gen?ricos (search.google.com, google.com).
+    - Hostname existente, exato na allowlist oficial (sem subdomínios arbitrários).
+    - Proibição de credenciais / userinfo (ex.: user@host).
+    - Proibição de portas não-padrão (apenas 443 ou omitida).
+    - Proibição de caracteres de controle, espaços em branco e backslashes (\).
+    - Proibição de endereços IP literais (IPv4 e IPv6).
+    - Proibição de homógrafos Unicode / IDN / punycode.
+    - Validação de prefixo de caminho para domínios genéricos (search.google.com, google.com).
     """
     if not url or not isinstance(url, str):
         return False
 
-    # Rejeitar URLs com espa?os em branco extras (in?cio/fim) ou comprimento excessivo
+    # Rejeitar URLs com espaços em branco extras (início/fim) ou comprimento excessivo
     if url != url.strip() or len(url) > MAX_URL_LENGTH:
         return False
 
@@ -72,7 +71,7 @@ def validate_destination_url(url: str | None) -> bool:
     if parsed.scheme.lower() != "https":
         return False
 
-    # 2. Rejeitar presen?a de userinfo (ex: https://g.page@evil.com)
+    # 2. Rejeitar presença de userinfo (ex: https://g.page@evil.com)
     if parsed.username is not None or parsed.password is not None or "@" in parsed.netloc:
         return False
 
@@ -89,7 +88,7 @@ def validate_destination_url(url: str | None) -> bool:
         return False
     hostname = hostname.lower()
 
-    # Rejeitar hom?grafos Unicode e punycode (todos os dom?nios Google autorizados s?o ASCII puro)
+    # Rejeitar homógrafos Unicode e punycode (todos os domínios Google autorizados são ASCII puro)
     if not hostname.isascii() or hostname.startswith("xn--"):
         return False
 
@@ -98,13 +97,13 @@ def validate_destination_url(url: str | None) -> bool:
         ipaddress.ip_address(hostname)
         return False  # Se for IP, rejeita
     except ValueError:
-        pass  # N?o ? IP, prossegue
+        pass  # Não é IP, prossegue
 
     # 5. Hostname deve bater exatamente com a allowlist
     if hostname not in ALLOWED_GOOGLE_HOSTS:
         return False
 
-    # 6. Valida??o de caminhos restritos por dom?nio
+    # 6. Validação de caminhos restritos por domínio
     if hostname in PATH_PREFIX_REQUIREMENTS:
         allowed_prefixes = PATH_PREFIX_REQUIREMENTS[hostname]
         path = parsed.path or "/"

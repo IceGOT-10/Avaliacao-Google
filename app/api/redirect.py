@@ -1,4 +1,4 @@
-"""Endpoint p?blico de redirecionamento de avalia??o Google: GET /r/{code}."""
+"""Endpoint público de redirecionamento de avaliação Google: GET /r/{code}."""
 
 from fastapi import APIRouter, Depends, Header, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -46,14 +46,14 @@ def redirect_to_review(
     if decision.status == RedirectStatus.NOT_FOUND:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": decision.detail or "Link n?o encontrado."},
+            content={"detail": decision.detail or "Link não encontrado."},
             headers=headers,
         )
 
     if decision.status == RedirectStatus.INVALID_DESTINATION:
         return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            content={"detail": decision.detail or "Destino do link inv?lido ou n?o autorizado."},
+            content={"detail": decision.detail or "Destino do link inválido ou não autorizado."},
             headers=headers,
         )
 
