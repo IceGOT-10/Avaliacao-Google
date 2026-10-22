@@ -119,3 +119,9 @@ As seguintes configurações foram adotadas como placeholders na fundação do p
 - **Porta Host do Banco de Dados (Dev):** `DB_HOST_PORT` com padrão `5432` e fallback para `5433` em caso de conflito com instâncias locais existentes de PostgreSQL.
 - **Banco de Dados Padrão:** `review_redirect` com usuário `app_user`.
 - **Estratégia de Redirecionamento Futura:** Formato `/r/{code}` para slugs curtos e códigos alfanuméricos gerados para os pontos de contato.
+
+## Relatório final (obrigatório)
+- Colar a saída literal de: `git status -s`, `git diff --stat`, `pytest -q` (com contagem) e `alembic check`.
+- Listar os testes novos por nome.
+- `docs/ESTADO_ATUAL.md`: manter as 9 seções, com coluna de evidência (comando + resultado). Não encurtar seções existentes.
+- Separar verificado, não verificado e inferido.

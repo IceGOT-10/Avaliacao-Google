@@ -24,7 +24,15 @@ def admin_only_endpoint(admin: User = Depends(require_admin)):
     return {"admin_id": admin.id}
 
 
-app.include_router(admin_test_router)
+
+
+@pytest.fixture
+def admin_test_route():
+    app.include_router(admin_test_router)
+    try:
+        yield
+    finally:
+        app.router.routes[:] = [route for route in app.router.routes if route.path != "/admin-only-test"]
 
 
 @pytest.fixture(autouse=True)
@@ -266,7 +274,7 @@ def test_csrf_origin_header_validation(db_client, test_user):
     assert r_allowed.status_code == 200
 
 
-def test_require_admin_dependency(db_client, test_user, admin_user):
+def test_require_admin_dependency(db_client, test_user, admin_user, admin_test_route):
     """Usuário comum recebe 403 em rota administrativa; administrador tem acesso permitido."""
     # Login com lojista comum (não admin)
     db_client.post(

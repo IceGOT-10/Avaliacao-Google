@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.access_event import AccessEvent
+from app.models.business import Business
 from app.models.review_link import ReviewLink
 from app.services.url_validator import validate_destination_url
 
@@ -122,7 +123,7 @@ def resolve_and_record_redirect(
         )
 
     # 2. Consulta do link no banco
-    stmt = select(ReviewLink).where(ReviewLink.code == code)
+    stmt = select(ReviewLink).join(Business).where(ReviewLink.code == code)
     link = db.scalars(stmt).first()
     if not link:
         return RedirectDecision(
@@ -131,7 +132,7 @@ def resolve_and_record_redirect(
         )
 
     # 3. Verificação de status ativo / desativado
-    if not link.is_active or link.deactivated_at is not None:
+    if not link.business.is_active or not link.is_active or link.deactivated_at is not None:
         _record_access_event(
             db=db,
             review_link_id=link.id,

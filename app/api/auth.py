@@ -5,10 +5,10 @@ from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, verify_csrf_origin
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.user import User
@@ -25,8 +25,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip()
 
 
 class UserResponse(BaseModel):
@@ -80,9 +85,9 @@ def login(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf_origin),
 ):
     """Autentica o usuário, emite cookie HttpOnly de sessão e zera contadores de tentativa."""
-    _verify_csrf_origin(request)
     settings = get_settings()
 
     # 1. Verificação do limitador de taxa de login
@@ -131,9 +136,9 @@ def logout(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf_origin),
 ):
     """Revoga a sessão atual no banco e invalida o cookie HttpOnly (idempotente)."""
-    _verify_csrf_origin(request)
     settings = get_settings()
 
     token = request.cookies.get(settings.session_cookie_name)
@@ -148,7 +153,8 @@ def logout(
         samesite="lax",
         secure=settings.cookie_secure,
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.get("/me", response_model=UserResponse)

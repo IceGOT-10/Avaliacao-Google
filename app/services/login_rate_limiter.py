@@ -19,10 +19,12 @@ class LoginRateLimiter:
         max_attempts: int = 5,
         window_seconds: int = 900,
         time_func: Callable[[], float] | None = None,
+        max_keys: int = 10_000,
     ) -> None:
         self.max_attempts = max_attempts
         self.window_seconds = window_seconds
         self._time_func = time_func or time.time
+        self.max_keys = max_keys
         self._lock = threading.Lock()
         self._failures: dict[str, list[float]] = {}
 
@@ -50,7 +52,10 @@ class LoginRateLimiter:
             attempts = self._failures.get(key, [])
             # Purga tentativas fora da janela atual
             valid_attempts = [ts for ts in attempts if ts > threshold]
-            self._failures[key] = valid_attempts
+            if valid_attempts:
+                self._failures[key] = valid_attempts
+            else:
+                self._failures.pop(key, None)
 
             if len(valid_attempts) >= self.max_attempts:
                 oldest_in_window = valid_attempts[0]
@@ -73,6 +78,9 @@ class LoginRateLimiter:
             valid_attempts = [ts for ts in attempts if ts > threshold]
             valid_attempts.append(now)
             self._failures[key] = valid_attempts
+            if len(self._failures) > self.max_keys:
+                oldest_key = min(self._failures, key=lambda item: self._failures[item][-1])
+                self._failures.pop(oldest_key, None)
 
     def record_success(self, email: str) -> None:
         """Zera o histórico de falhas após uma autenticação bem-sucedida."""
@@ -90,4 +98,14 @@ class LoginRateLimiter:
 
 
 # Instância global compartilhada na aplicação
-global_login_rate_limiter = LoginRateLimiter()
+def build_login_rate_limiter() -> LoginRateLimiter:
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    return LoginRateLimiter(
+        max_attempts=settings.login_rate_limit_max_attempts,
+        window_seconds=settings.login_rate_limit_window_seconds,
+    )
+
+
+global_login_rate_limiter = build_login_rate_limiter()

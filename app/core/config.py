@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str  # obrigatória; sem valor padrão para evitar credenciais embutidas
     test_database_url: str | None = None
+    public_base_url: str | None = None
 
     # Configurações de autenticação e sessão por cookie
     session_cookie_name: str = "session_id"

@@ -22,6 +22,7 @@ Edite `.env` (senhas reais nunca vão para o repositório).
 - `ALLOWED_ORIGINS`: Lista de origens permitidas para verificação de CSRF (separadas por vírgula).
 - `LOGIN_RATE_LIMIT_MAX_ATTEMPTS`: Limite de falhas de login antes de bloqueio temporário 429 (padrão: `5`).
 - `LOGIN_RATE_LIMIT_WINDOW_SECONDS`: Janela de contagem de falhas de login em segundos (padrão: `900` / 15 min).
+- `PUBLIC_BASE_URL`: URL pública opcional usada para montar `public_url` dos links.
 
 ## Instalação local (sem Docker)
 ```bash
@@ -59,6 +60,20 @@ python -m app.cli create-admin --email admin@empresa.com
 - `POST /auth/login`: Autenticação via JSON (`{email, password}`). Emite cookie de sessão server-side `HttpOnly` com `SameSite=Lax`.
 - `POST /auth/logout`: Revoga a sessão no banco e remove o cookie (HTTP 204 No Content, idempotente).
 - `GET /auth/me`: Retorna os dados do usuário autenticado a partir do cookie da sessão (`{id, email, is_admin}`).
+
+### API privada de lojas e links
+Todas as rotas `/api/*` exigem sessão e retornam `Cache-Control: no-store`. Administradores veem e criam lojas; owners editam suas lojas; owners e managers leem e gerenciam links. Usuários sem acesso recebem 404 para não revelar outra loja.
+
+- `GET /api/businesses` e `POST /api/businesses` (admin)
+- `GET/PATCH /api/businesses/{id}` (membro; edição owner/admin)
+- `GET/POST /api/businesses/{id}/links` (membro; criação owner/manager/admin)
+- `PATCH /api/links/{id}` (owner/manager/admin; somente label/status)
+
+### CLI adicional
+```bash
+python -m app.cli create-user --email usuario@empresa.com
+python -m app.cli grant-access --email usuario@empresa.com --business-slug loja --role owner
+```
 
 ## Migrações (Alembic)
 As migrações não rodam automaticamente no startup do container. A execução deve ser explícita:
