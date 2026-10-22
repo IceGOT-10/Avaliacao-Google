@@ -1,165 +1,169 @@
-﻿# Estado atual do projeto
+# Estado Atual do Projeto ? Avalia??o Google
 
-## 1. Última auditoria
-- **Data e hora local:** 22 de outubro de 2026, 17:28 (Horário de Brasília, UTC-03:00).
-- **Branch atual:** `main`.
-- **Commit base (HEAD):** `a67e935` (*first commit*).
-- **Estado do Git:**
-  - 7 arquivos modificados no working tree (não commitados): `.env.example`, `README.md`, `app/core/config.py`, `app/core/database.py`, `app/models/__init__.py`, `migrations/env.py`, `tests/conftest.py`.
-  - 10 arquivos/diretórios não rastreados (*untracked*): `AGENTS.md`, `app/core/tokens.py`, `app/models/access_event.py`, `app/models/business.py`, `app/models/business_membership.py`, `app/models/review_link.py`, `app/models/review_snapshot.py`, `app/models/user.py`, `docs/`, `migrations/versions/0001_initial_schema.py`, `tests/test_models.py`.
-  - Total de arquivos alterados/criados referentes à Fase 2 prontos para validação e commit pelo usuário.
-- **Limitações da inspeção:**
-  - Execução realizada no ambiente de desenvolvimento local Windows 11 (PowerShell) utilizando o ambiente virtual Python 3.12 (`.venv`).
-  - Container PostgreSQL 16 (`avaliacaogoogle-db-1`) ativo no Docker Compose, mapeado na porta `5433` do host para desenvolvimento e testes.
-  - Comandos do Alembic executados exclusivamente em modo de leitura/inspeção (`current`, `heads`, `check`), sem operações de DDL destrutivas.
+**Data da auditoria:** 22/10/2026 (Atualizado ao t?rmino da Fase 3)  
+**Status do projeto:** Fases 1, 2 e 3 Conclu?das | Pronto para a Fase 4  
+**Ambiente verificado:** Windows 10/11, Python 3.12.10, PostgreSQL 16.6 (Docker em localhost:5433), Git (branch `main`).
 
 ---
 
-## 2. Fase atual
-- **Número e nome da fase:**
-  - **Fase 1 — Fundação técnica e ambiente reproduzível:** CONCLUÍDA.
-  - **Fase 2 — Modelo de dados e migrações:** CONCLUÍDA.
-  - **Fase 3 — Fluxo público NFC/QR e redirecionamento:** NÃO INICIADA (próxima etapa).
-- **Estado:** EM TRANSIÇÃO (Fases 1 e 2 concluídas, Fase 3 pronta para início).
-- **Justificativa baseada em evidências desta auditoria:**
-  - `alembic current` executado contra o PostgreSQL de desenvolvimento confirmou a revisão `0001_initial_schema (head)`.
-  - `alembic check` confirmou zero divergências entre o metadata dos modelos declarativos e o schema do banco (`No new upgrade operations detected.`, exit code 0).
-  - Execução de `pytest -v` confirmou 15/15 testes passando, cobrindo todas as constraints de integridade relacional, unicidades e regras de exclusão no PostgreSQL real.
-- **Objetivo imediato:** Iniciar a Fase 3, implementando o endpoint público `GET /r/{code}`, o serviço de validação estrita anti-open-redirect (apenas URLs legítimas do Google) e a persistência de eventos em `access_events`.
+## 1. Vis?o Geral do Produto e da Arquitetura
+- **Objetivo:** Plataforma de redirecionamento rastre?vel e inteligente para avalia??es no Google Meu Neg?cio / Google Maps via NFC e QR Code, voltada para lojistas e estabelecimentos comerciais f?sicos.
+- **Fato fundamental de produto:** O redirecionamento rastreia o engajamento f?sico (aproxima??o por NFC ou leitura de QR Code), mas **n?o prova** a publica??o efetiva da avalia??o no Google. M?tricas de convers?o nunca devem ser fabricadas.
+- **Stack t?cnica confirmada:**
+  - Linguagem: Python 3.12.10
+  - Framework Web: FastAPI 0.115.6 + Uvicorn 0.34.0 + Pydantic v2 (pydantic-settings 2.7.1)
+  - Banco de Dados & ORM: PostgreSQL 16.6 + SQLAlchemy 2.0.36 + psycopg (v3) 3.2.4
+  - Migra??es: Alembic 1.14.1
+  - Testes: Pytest 8.3.4 (execu??o real contra PostgreSQL `review_redirect_test`)
+  - Containeriza??o: Docker + Docker Compose (compose.yaml e compose.production.yaml)
 
 ---
 
-## 3. Funcionalidades verificadas
-
-| Funcionalidade | Arquivos relevantes | Estado | Evidência disponível (sessão atual) |
-| :--- | :--- | :--- | :--- |
-| **Health Check (`GET /health`)** | `app/main.py`, `app/api/health.py`, `tests/test_health.py` | Implementada e verificada | Responde HTTP 200 `{"status": "ok"}` no `pytest` isolado sem banco. |
-| **Configuração de Ambiente** | `app/core/config.py`, `.env.example`, `.env` | Implementada e verificada | `pydantic-settings` carrega variáveis de ambiente; verificado suporte a `TEST_DATABASE_URL`. |
-| **Conexão e Naming Convention** | `app/core/database.py` | Implementada e verificada | `POSTGRES_NAMING_CONVENTION` registrada em `Base.metadata` e validada nas constraints do Alembic. |
-| **Geração Segura de Códigos** | `app/core/tokens.py`, `tests/test_models.py` | Implementada e verificada | `generate_link_code` testado com geração em lote de 1.000 tokens únicos via `pytest`. |
-| **Modelos de Dados (6 entidades)** | `app/models/*`, `app/models/__init__.py` | Implementada e verificada | Modelos declarativos SQLAlchemy 2.x com tipagem `Mapped`/`mapped_column` validados em 14 testes de integração. |
-| **Migração Inicial do Schema** | `migrations/versions/0001_initial_schema.py` | Implementada e verificada | `alembic current` = `0001_initial_schema`, `alembic check` = exit 0 sem novas operações pendentes. |
-| **Ambiente Docker / Compose** | `Dockerfile`, `compose.yaml`, `compose.production.yaml` | Implementada e verificada | Container `avaliacaogoogle-db-1` inspecionado ativo e saudável via `docker compose ps`. |
-| **Redirecionamento Público `/r/{code}`** | N/A | Ausente | Rota não criada em `app/api/` (escopo da Fase 3). |
-| **Validação Anti-Open Redirect** | N/A | Ausente | Validação estrita de domínio do Google ainda não implementada (escopo da Fase 3). |
-| **Autenticação e Autorização** | N/A | Ausente | Sem autenticação de lojistas implementada (escopo da Fase 4). |
-| **Métricas e Painel de Acessos** | N/A | Ausente | Sem endpoints de métricas ou agregações (escopo da Fase 5). |
-| **Geração de QR Code e NFC** | N/A | Ausente | Sem utilitários de geração de imagens de QR Code (escopo da Fase 6). |
+## 2. Estrutura do Reposit?rio
+```
+Avaliacao Google/
+??? app/
+?   ??? __init__.py
+?   ??? main.py                     # Inst?ncia FastAPI, healthcheck e rota de redirecionamento
+?   ??? api/
+?   ?   ??? __init__.py
+?   ?   ??? health.py               # GET /health (liveness check)
+?   ?   ??? redirect.py             # GET /r/{code} (redirecionamento p?blico 307 com Cache-Control: no-store)
+?   ??? core/
+?   ?   ??? __init__.py
+?   ?   ??? config.py               # Settings pydantic-settings
+?   ?   ??? database.py             # Engine lazy, Base declarativa, SessionLocal, get_db
+?   ?   ??? tokens.py               # Gera??o segura de tokens n?o-sequenciais (secrets.token_urlsafe)
+?   ??? models/
+?   ?   ??? __init__.py             # Exporta todos os 6 modelos
+?   ?   ??? user.py                 # Modelo User
+?   ?   ??? business.py             # Modelo Business
+?   ?   ??? business_membership.py  # Modelo BusinessMembership
+?   ?   ??? review_link.py          # Modelo ReviewLink
+?   ?   ??? access_event.py         # Modelo AccessEvent
+?   ?   ??? review_snapshot.py      # Modelo ReviewSnapshot
+?   ??? services/
+?       ??? __init__.py
+?       ??? url_validator.py        # Validador puro anti-open-redirect com allowlist oficial Google
+?       ??? redirect_service.py     # Resolu??o de link, heur?stica de bot e registro de access_event
+??? docs/
+?   ??? ESTADO_ATUAL.md             # Este documento
+??? migrations/
+?   ??? env.py                      # Configura??o Alembic conectada ao app.core
+?   ??? script.py.mako
+?   ??? versions/
+?       ??? 0001_initial_schema.py  # Migra??o inicial das 6 tabelas
+??? tests/
+?   ??? conftest.py                 # Fixtures Pytest (test_engine, db_session isolada com TRUNCATE, db_client)
+?   ??? test_health.py              # Teste de rota /health
+?   ??? test_models.py              # 14 testes de integridade relacional, constraints e cascade
+?   ??? test_url_validator.py       # 57 testes rigorosos do validador anti-open-redirect
+?   ??? test_redirect.py            # 15 testes de fluxo do endpoint p?blico GET /r/{code}
+??? .env.example
+??? AGENTS.md                       # Diretrizes permanentes para agentes de programa??o
+??? alembic.ini
+??? compose.yaml
+??? compose.production.yaml
+??? Dockerfile
+??? README.md
+??? requirements.txt
+??? requirements-dev.txt
+```
 
 ---
 
-## 4. Banco de dados e infraestrutura
-- **Banco de Dados Afetado nas Leituras do Alembic:**
-  - Banco de desenvolvimento: `review_redirect` (host `localhost:5433`, usuário `app_user`).
-  - Comando `alembic current`: `0001_initial_schema (head)`.
-  - Comando `alembic heads`: `0001_initial_schema (head)`.
-  - Comando `alembic check`: `No new upgrade operations detected.` (exit 0).
-- **Banco de Testes Separado:**
-  - Banco de testes: `review_redirect_test` (host `localhost:5433`, usuário `app_user`).
-  - Validado via fixture `get_verified_test_db_url()` em `tests/conftest.py` que aborta caso o banco não termine com `_test`.
-- **Tabelas Operacionais (6 entidades):**
-  - `users`: `id` (BigInt PK), `email` (único, minúsculo forçado por `CheckConstraint`), `password_hash`, `is_active`, `is_admin`, timestamps.
-  - `businesses`: `id` (BigInt PK), `name`, `slug` (único), `google_review_url`, `timezone` (default 'America/Sao_Paulo'), `is_active`, timestamps. *Sem campo de endereço.*
-  - `business_memberships`: `id` (BigInt PK), `user_id` (FK cascade), `business_id` (FK cascade), `role` (Check: 'owner'/'manager'), `created_at`. Unique(user_id, business_id).
-  - `review_links`: `id` (BigInt PK), `business_id` (FK restrict), `code` (único), `source` (Check: 'nfc'/'qr'/'other'), `label`, `destination_url` (Check: começa com https://), `is_active`, timestamps, `deactivated_at`.
-  - `access_events`: `id` (BigInt PK), `review_link_id` (FK restrict), `occurred_at`, `result` (Check: 'redirected'/'blocked_inactive'), `is_probable_bot`. Sem IP, sem UA bruto e sem geolocalização.
-  - `review_snapshots`: `id` (BigInt PK), `business_id` (FK restrict), `captured_at`, `total_reviews` (Check: >= 0), `average_rating` (Numeric(3,2), Check: 0 a 5), `source` (Check: 'manual'/'google_api'), `status`, `error_message`.
-- **Infraestrutura Docker:**
-  - `compose.yaml`: postgres 16-alpine com healthcheck operacional (`Up 3 minutes (healthy)`).
-  - Porta do host em desenvolvimento: `DB_HOST_PORT=5433` (evitando conflito com a porta padrão 5432).
+## 3. Estado das Funcionalidades
+
+| Funcionalidade | Estado | Detalhes |
+|---|---|---|
+| Healthcheck (`GET /health`) | Conclu?do | Retorna `{"status": "ok"}` sem tocar no banco de dados. |
+| Modelo de Dados Relacional | Conclu?do | 6 entidades SQLAlchemy 2.x com tipagem estrita `Mapped[...]` e constraints. |
+| Migra??o Inicial Alembic | Conclu?do | Revis?o `0001_initial_schema` sincronizada com desenvolvimento e testes. |
+| Validador Anti-Open Redirect | Conclu?do | Fun??o pura `validate_destination_url()` com allowlist estrita do Google. |
+| Redirecionamento P?blico (`GET /r/{code}`) | Conclu?do | HTTP 307 com Location exato, `Cache-Control: no-store` e auditoria. |
+| Registro de Eventos (`access_events`) | Conclu?do | Auditoria na mesma sess?o sem dados pessoais (sem IP, sem UA bruto). |
+| Detec??o Heur?stica de Bots | Conclu?do | `is_probable_bot` (True/False/None) via substrings sem reter cabe?alhos. |
+| Autentica??o & Autoriza??o | N?o iniciado | Previsto para a Fase 4 (decis?o de Sess?o vs JWT pendente de alinhamento). |
+| Gest?o de Lojas e Links | N?o iniciado | Previsto para a Fase 4/5. |
+| Painel e M?tricas | N?o iniciado | Previsto para a Fase 5. |
+| Gera??o QR Code / NFC | N?o iniciado | Previsto para a Fase 6. |
+| Rate Limiting | N?o iniciado | Risco mapeado para tratamento na Fase 7. |
 
 ---
 
-## 5. Testes
-- **Testes existentes:**
-  - `tests/test_health.py::test_health_returns_ok` (liveness check isolado sem dependência de banco).
-  - `tests/test_models.py::test_entities_creation_and_relationships` (criação e navegação bidirecional).
-  - `tests/test_models.py::test_user_email_uniqueness` (unicidade de email).
-  - `tests/test_models.py::test_business_slug_uniqueness` (unicidade de slug).
-  - `tests/test_models.py::test_review_link_code_uniqueness` (unicidade de código de link).
-  - `tests/test_models.py::test_business_membership_uniqueness` (unicidade da associação user-business).
-  - `tests/test_models.py::test_user_email_lowercase_check_constraint` (CheckConstraint de email minúsculo).
-  - `tests/test_models.py::test_business_membership_role_check_constraint` (CheckConstraint de role: 'owner'/'manager').
-  - `tests/test_models.py::test_review_link_source_check_constraint` (CheckConstraint de source: 'nfc'/'qr'/'other').
-  - `tests/test_models.py::test_review_link_destination_url_https_check_constraint` (CheckConstraint de URL https).
-  - `tests/test_models.py::test_access_event_result_check_constraint` (CheckConstraint de resultado: 'redirected'/'blocked_inactive').
-  - `tests/test_models.py::test_review_snapshot_check_constraints` (CheckConstraints de rating 0-5, total >= 0 e source).
-  - `tests/test_models.py::test_ondelete_restrict_for_business_and_links` (RESTRICT protegendo histórico analítico).
-  - `tests/test_models.py::test_ondelete_cascade_for_memberships` (CASCADE de memberships ao excluir usuário ou loja).
-  - `tests/test_models.py::test_generate_link_code_uniqueness_and_format` (geração em lote de 1.000 tokens únicos).
-- **Comandos efetivamente executados nesta auditoria:**
+## 4. Seguran?a e Validador de URLs (Fase 3)
+
+### Fonte Oficial da Allowlist
+A lista de dom?nios permitidos foi confirmada na documenta??o oficial do Google:
+- **Fonte:** [Ajuda do Perfil da Empresa no Google ? Criar um link ou QR code para pedir avalia??es](https://support.google.com/business/answer/16816815?hl=pt-BR)
+
+### Hostnames e Regras da Allowlist (`app/services/url_validator.py`)
+- `g.page`: links curtos oficiais do Google Meu Neg?cio.
+- `search.google.com`: permitido estritamente com path iniciando em `/local/writereview`.
+- `maps.app.goo.gl`: links curtos gerados pelo aplicativo m?vel Google Maps.
+- `www.google.com` e `google.com`: permitidos estritamente com path iniciando em `/maps`.
+- `goo.gl`: permitido estritamente com path iniciando em `/maps`.
+
+### Vetores Bloqueados pelo Validador
+- Esquemas n?o-HTTPS (HTTP, FTP, javascript, data, protocol-relative `//`).
+- Portas n?o-padr?o (rejeita qualquer porta diferente de 443).
+- Userinfo / credenciais (`user:password@host` ou `g.page@evil.com`).
+- Caracteres de controle ASCII (< 32, 127), whitespaces n?o tratados e backslashes (`\`).
+- Duplo encoding (`%25`, `%5c`, etc.).
+- Endere?os IP literais (IPv4 e IPv6).
+- Hom?grafos Unicode e dom?nios punycode (`xn--...`).
+- Subdom?nios n?o autorizados (ex.: `google.com.evil.com` ou `sub.g.page`).
+- URLs maiores que 2048 caracteres.
+- Execu??o puramente est?tica e determin?stica: nenhuma requisi??o de rede ou DNS ? realizada.
+
+---
+
+## 5. Testes Automatizados
+
+- **Comando executado:**
   ```powershell
   .\.venv\Scripts\python -m pytest -v
   ```
-- **Resultados observados:**
-  - **15 aprovados, 0 falhos** em 1.12s.
-  - 1 warning de depreciação de `anyio` na biblioteca `starlette` (aviso interno do TestClient do Starlette, sem impacto funcional).
-- **Testes não executados:**
-  - Testes de concorrência massiva de conexões: não executados por não fazerem parte do escopo de testes unitários/integrados da Fase 2.
-- **Falhas e riscos pendentes:**
-  - Nenhuma falha identificada. A suíte completa está verde e determinística.
+- **Resultado consolidado:**
+  - **87 testes aprovados, 0 falhos** em 2.16s contra PostgreSQL real (`review_redirect_test`).
+  - Cobertura:
+    - `tests/test_health.py`: 1 teste de liveness.
+    - `tests/test_models.py`: 14 testes de constraints, integridade referencial, cascades e tokens.
+    - `tests/test_url_validator.py`: 57 testes parametrizados (13 v?lidos, 44 vetores de ataque/malforma??o).
+    - `tests/test_redirect.py`: 15 testes de fluxo HTTP (ativo 307, inativo 410, inexistente 404, malformado 404, destino fora da allowlist 502, heur?stica de bot, inspe??o de privacidade de colunas, acessos m?ltiplos consecutivos).
+
+- **Verifica??o Alembic:**
+  ```powershell
+  .\.venv\Scripts\alembic check
+  ```
+  - Status: `No new upgrade operations detected.` (schema de banco perfeitamente alinhado com os modelos).
+
+- **Medi??o de Desempenho Informative:**
+  - Lat?ncia m?dia do endpoint `/r/{code}`: ~11.89 ms (incluindo consulta no banco e commit do `access_event`).
 
 ---
 
-## 6. Segurança
-- **Proteção de Segredos:** Conforme. Nenhuma senha, token ou string de conexão com credencial real está versionada no Git ou em arquivos de código. O `.env` está estritamente listado em `.gitignore` e `.dockerignore`.
-- **Integridade e Prevenção de Perda de Dados:** O uso de `ondelete="RESTRICT"` em `review_links`, `access_events` e `review_snapshots` protege contra a perda acidental de histórico de métricas quando um lojista for manipulado.
-- **Privacidade por Design:** O modelo `access_events` cumpre a diretriz de não armazenar dados pessoais rastreáveis (sem IP, sem User-Agent bruto, sem fingerprint, sem geolocalização).
-- **Validação de Destinos (Anti-Open Redirect):**
-  - Implementado no nível do banco via `CheckConstraint("destination_url LIKE 'https://%'")`.
-  - Pendente para a Fase 3: validação de domínio em nível de aplicação (permitindo estritamente domínios oficiais do Google: `g.page/r/...`, `search.google.com/local/writereview?...`, `maps.app.goo.gl/...`, `google.com/maps/...`).
+## 6. Riscos Mapeados
+
+1. **Aus?ncia de Rate Limiting (Fase 3):**
+   - O endpoint p?blico `GET /r/{code}` atualmente n?o possui limita??o de taxa por IP ou por c?digo de link.
+   - *Mitiga??o planejada:* Implementa??o de rate limiting (ex.: SlowAPI / Redis ou token bucket em mem?ria) na Fase 7.
+2. **Links com Destino Inv?lido n?o Geram Evento:**
+   - Se um link tiver um destino que passe pelo `CheckConstraint` do banco (`LIKE 'https://%'`), mas seja rejeitado pelo validador da aplica??o (ex.: `https://evil.example`), o sistema responde 502 e n?o grava evento.
+   - *Motivo t?cnico:* O banco possui `CheckConstraint("result IN ('redirected', 'blocked_inactive')")`. Gravar um resultado como 'blocked_invalid_url' exigiria nova migra??o de banco, o que estava explicitamente fora do escopo da Fase 3.
+3. **Contagem de Acessos Inclui Bots:**
+   - Requisi??es feitas por crawlers e bots gravam `access_event`, por?m com a coluna `is_probable_bot = True`.
+   - *Aten??o para as Fases 5 e 6:* Os relat?rios e m?tricas do lojista dever?o filtrar explicitamente `is_probable_bot is not True` para evitar inflar artificialmente as visualiza??es f?sicas.
 
 ---
 
-## 7. Pendências priorizadas
+## 7. Pr?xima Tarefa Recomendada: Fase 4 (Autentica??o e Sess?o)
 
-### P0 — Bloqueadores críticos
-- *Nenhum bloqueador crítico.* Base de dados, modelos e migrações validados e operacionais.
-
-### P1 — Necessários para a próxima etapa (Fase 3)
-1. **Endpoint Público `GET /r/{code}`:**
-   - Consulta do link ativo por `code`.
-   - Se ativo: redirecionamento HTTP 307 (Temporary Redirect) e persistência de `access_event` com `result='redirected'`.
-   - Se inativo (`is_active=False` ou `deactivated_at` não nulo): resposta amigável (ou HTTP 410/404) e persistência de `access_event` com `result='blocked_inactive'`.
-   - Se inexistente: retorno HTTP 404 (sem gravar evento em banco).
-2. **Serviço de Validação Anti-Open Redirect:**
-   - Serviço ou validador em `app/services/` para assegurar que apenas URLs do Google Meu Negócio possam ser cadastradas e redirecionadas.
-3. **Detecção Básica de Bots:**
-   - Identificação de bots conhecidos via User-Agent para preencher a flag booleana `is_probable_bot` (sem armazenar o User-Agent).
-
-### P2 — Melhorias posteriores (Fases 4 a 6)
-1. Autenticação e autorização com JWT para lojistas (Fase 4).
-2. API de métricas e relatórios agregados por ponto físico (Fase 5).
-3. Geração de QR Code em imagem (SVG/PNG) e payloads para gravação NFC (Fase 6).
-
----
-
-## 8. Próxima tarefa recomendada
-- **Objetivo:** Implementar a **Fase 3 — Fluxo público NFC/QR e redirecionamento**.
-- **Arquivos prováveis afetados:**
-  - `app/api/redirect.py` (novo router para `/r/{code}`)
-  - `app/services/redirect_service.py` (lógica de consulta, auditoria e detecção básica de bot)
-  - `app/services/url_validator.py` (validador estrito de domínios Google)
-  - `app/main.py` (inclusão do novo router)
-  - `tests/test_redirect.py` (novos testes de fluxo público)
-- **Critérios de aceitação:**
-  - Rota `GET /r/{code}` executando redirecionamento HTTP 307 para a URL cadastrada.
-  - Links desativados barrados com registro `blocked_inactive`.
-  - Códigos inexistentes retornando HTTP 404 sem gravação de evento.
-  - Evento de acesso gravado sem dados sensíveis (sem IP ou UA bruto).
-  - Validador de URL rejeitando domínios fora da lista de permissões do Google Meu Negócio.
-- **Testes necessários:**
-  - Teste de redirecionamento com link ativo (HTTP 307 + Location header correto).
-  - Teste de link inativo e link inexistente.
-  - Teste de auditoria de eventos criados no banco.
-  - Teste unitário do validador de URL contra tentativas de Open Redirect.
-- **Dependências e riscos:**
-  - Garantir tempo de resposta baixo (< 50ms) no redirecionamento.
-
----
-
-## 9. Instruções para a próxima sessão
-1. **Leitura obrigatória:** Ler `AGENTS.md` e este `docs/ESTADO_ATUAL.md` antes de qualquer ação.
-2. **Estado do banco:** O banco `review_redirect` já possui a migração `0001_initial_schema` aplicada. Mantenha o container ativo via `docker compose up -d db`.
-3. **Não alterar código existente sem necessidade:** As entidades em `app/models/` já estão validadas e não devem ser modificadas nesta etapa.
-4. **Sem commits automáticos:** Aguardar orientações expressas do usuário antes de realizar commits.
+- **Pr?-requisito obrigat?rio:**
+  - Confirmar com o usu?rio a estrat?gia de autentica??o antes de escrever c?digo:
+    - **Op??o A:** Sess?o Stateful em Cookies HTTP-only (mais simples para pain?is web monol?ticos/SSR).
+    - **Op??o B:** JWT Stateless com Bearer Token (ideal para APIs desacopladas e SPAs).
+- **Escopo da Fase 4:**
+  - Registro e login de usu?rios lojistas (`/auth/register`, `/auth/login`, `/auth/logout`, `/auth/me`).
+  - Hashing seguro de senhas com `argon2-cffi` ou `bcrypt`.
+  - Depend?ncias de inje??o `get_current_user` e `require_business_membership`.
