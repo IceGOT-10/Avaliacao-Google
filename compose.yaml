@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    environment:
+      # Dentro da rede do Compose o banco é acessível pelo host "db".
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/code/app
+      - ./migrations:/code/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16.6-alpine
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_HOST_PORT:-5432}:5432" # somente desenvolvimento
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

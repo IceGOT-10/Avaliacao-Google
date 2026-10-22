@@ -1,0 +1,21 @@
+# Override de produção. Use: docker compose -f compose.yaml -f compose.production.yaml ...
+# As variáveis devem vir do ambiente/secret manager (não de arquivo .env).
+services:
+  app:
+    env_file: !reset []
+    environment:
+      APP_NAME: ${APP_NAME:-review-redirect}
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?defina POSTGRES_USER}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:?defina POSTGRES_DB}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes: !reset []
+    restart: unless-stopped
+
+  db:
+    env_file: !reset []
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB}
+    ports: !reset []
+    restart: unless-stopped
