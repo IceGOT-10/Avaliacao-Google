@@ -1,4 +1,4 @@
-"""Configuração da aplicação via variáveis de ambiente (pydantic-settings)."""
+﻿"""Configuração da aplicação via variáveis de ambiente (pydantic-settings)."""
 
 from functools import lru_cache
 
@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     app_name: str = "review-redirect"
     environment: str = "development"
     database_url: str  # obrigatória; sem valor padrão para evitar credenciais embutidas
+    test_database_url: str | None = None
 
 
 @lru_cache

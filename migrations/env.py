@@ -1,9 +1,9 @@
-from logging.config import fileConfig
+﻿from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-import app.models  # noqa: F401  (registra modelos no metadata quando existirem)
+import app.models  # noqa: F401  (registra modelos no metadata)
 from app.core.config import get_settings
 from app.core.database import Base
 
@@ -11,7 +11,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
+# Respeita URL fornecida explicitamente (ex.: em testes automatizados); fallback para settings
+current_url = config.get_main_option("sqlalchemy.url")
+if not current_url:
+    current_url = get_settings().database_url
+
+config.set_main_option("sqlalchemy.url", current_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
 
